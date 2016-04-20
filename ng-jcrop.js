@@ -19,13 +19,11 @@
     .constant('FileReader', FileReader)
 
     .constant('ngJcroptDefaultConfig', {
-        widthLimit: 1000,
-        heightLimit: 1000,
+        widthLimit: 10000,
+        heightLimit: 10000,
         previewImgStyle: {'width': '100px', 'height': '100px', 'overflow': 'hidden', 'margin-left': '5px'},
         jcrop: {
-            aspectRatio: 1,
-            maxWidth: 300,
-            maxHeight: 300
+            aspectRatio: 1
         }
     })
 
@@ -33,9 +31,6 @@
         '<div class="ng-jcrop">' +
         '    <div class="ng-jcrop-image-wrapper">' +
         '        <img class="ng-jcrop-image" />' +
-        '   </div>' +
-        '   <div class="ng-jcrop-thumbnail-wrapper" ng-style="previewImgStyle">' +
-        '       <img class="ng-jcrop-thumbnail" />' +
         '   </div>' +
         '</div>'
     )
@@ -107,7 +102,6 @@
     .directive('ngJcropInput', function(){
 
         return {
-            scope: {ngJcropInput: '@'},
             restrict: 'A',
             controller: 'JcropInputController'
         };
@@ -116,13 +110,13 @@
 
     .controller('JcropInputController', ['$rootScope', '$element', '$scope', 'FileReader',
     function($rootScope, $element, $scope, FileReader){
+
         if( $element[0].type !== 'file' ){
             throw new Error('ngJcropInput directive must be placed with an input[type="file"]');
         }
 
         $scope.onFileReaderLoad = function(ev){
-            var configName = $scope.ngJcropInput || 'default';
-            $rootScope.$broadcast('JcropChangeSrc', ev.target.result, configName);
+            $rootScope.$broadcast('JcropChangeSrc', ev.target.result);
             $element[0].value = '';
         };
 
@@ -194,8 +188,7 @@
             var widthShrinkRatio = img.width / ngJcropConfig.jcrop.maxWidth,
                 heightShrinkRatio = img.height / ngJcropConfig.jcrop.maxHeight,
                 widthConstraining = img.width > ngJcropConfig.jcrop.maxWidth && widthShrinkRatio > heightShrinkRatio,
-                heightConstraining = img.height > ngJcropConfig.jcrop.maxHeight && heightShrinkRatio > widthShrinkRatio,
-                squareConstraining = img.height === img.width && img.width > ngJcropConfig.jcrop.maxWidth;
+                heightConstraining = img.height > ngJcropConfig.jcrop.maxHeight && heightShrinkRatio > widthShrinkRatio;
 
             if (widthConstraining) {
                 $scope.imgStyle.width = ngJcropConfig.jcrop.maxWidth;
@@ -203,9 +196,6 @@
             } else if (heightConstraining) {
                 $scope.imgStyle.height = ngJcropConfig.jcrop.maxHeight;
                 $scope.imgStyle.width = img.width / heightShrinkRatio;
-            } else if (squareConstraining) {
-                $scope.imgStyle.height = ngJcropConfig.jcrop.maxHeight;
-                $scope.imgStyle.width = ngJcropConfig.jcrop.maxWidth;
             } else {
                 $scope.imgStyle.height = img.height;
                 $scope.imgStyle.width = img.width;
@@ -218,19 +208,16 @@
         $scope.getShrinkRatio = function(){
             var img = $('<img>').attr('src', $scope.mainImg[0].src)[0];
 
-            if(ngJcropConfig.jcrop.maxWidth > img.width && ngJcropConfig.jcrop.maxHeight > img.height){
-                return 1;
+            // if(ngJcropConfig.jcrop.maxWidth > img.width || ngJcropConfig.jcrop.maxHeight > img.height){
+            //     return 1;
+            // }
+            var widthShrinkRatio = img.width / ngJcropConfig.jcrop.maxWidth;
+            if (img.width < ngJcropConfig.jcrop.maxWidth){
+                widthShrinkRatio = 1;
             }
 
-            var widthShrinkRatio = img.width / ngJcropConfig.jcrop.maxWidth,
-                heightShrinkRatio = img.height / ngJcropConfig.jcrop.maxHeight,
-                widthConstraining = img.width > ngJcropConfig.jcrop.maxWidth && widthShrinkRatio > heightShrinkRatio;
-
-            if(widthConstraining) {
-                return widthShrinkRatio;
-            } else {
-                return heightShrinkRatio;
-            }
+            return widthShrinkRatio;
+            
         };
 
         /**
@@ -348,11 +335,7 @@
 
         $scope.$on('$destroy', $scope.destroy);
 
-        $scope.$on('JcropChangeSrc', function(ev, src, configName){
-
-            if ($scope.ngJcropConfigName !== configName) {
-                return; // To update only the correct configured jCrop instances
-            }
+        $scope.$on('JcropChangeSrc', function(ev, src){
 
             $scope.$apply(function(){
                 $scope.setSelection({
